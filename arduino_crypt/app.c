@@ -30,7 +30,12 @@ int main(void) {
     if(n != 3 && (*msg != 'C' || *msg != 'D')){
       UART_putChar(n);
       UART_putString((uint8_t*)"NOT A VALID OPTION\n");
-    }else{
+    }
+    else if(*msg=='S' && *msg=='T' && *msg=='O' && *msg=='P'){
+      UART_putString((uint8_t*)"FINE\n");
+      break;
+    }
+    else{
       if(*msg == 'C'){
 	UART_getString(msg);
 	crypt(msg);
@@ -43,4 +48,5 @@ int main(void) {
       }
     }
   }
+  return 0;
 }
