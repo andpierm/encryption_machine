@@ -1,5 +1,14 @@
 #include "uart.h"
 
+uint8_t equals(uint8_t* a, uint8_t* b){
+  while(*a != '\n'){
+    if(*a != *b) return 0;
+    a++;
+    b++;
+  }
+  return 1;
+}
+
 void UART_init(void) {
   // Set baud rate
   UBRR0H = (uint8_t)(MYUBRR>>8);

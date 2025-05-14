@@ -5,6 +5,8 @@
 #define BAUD 19200
 #define MYUBRR (F_CPU/16/BAUD-1)
 
+uint8_t equals(uint8_t* a, uint8_t* b);
+
 //! @brief initializes the uart peripheral
 void UART_init(void);
 
