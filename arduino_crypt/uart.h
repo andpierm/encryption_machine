@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/sleep.h>
 
 #define BAUD 19200
 #define MYUBRR (F_CPU/16/BAUD-1)

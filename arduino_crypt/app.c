@@ -1,5 +1,6 @@
 #include "crypt.h"
 #include "uart.h"
+#include <util/delay.h>
 
 volatile uint8_t password[5] = {'1','2','3','4','5'};
 uint8_t msg[1900];
@@ -9,6 +10,7 @@ int main(void) {
   uint8_t cnt = 0;
   while(cnt < 3){
     UART_getString(msg);
+    UART_putString(msg);
     if(equals(msg, (uint8_t*)password)) break;
     cnt++;
   }
@@ -17,7 +19,6 @@ int main(void) {
   while(1){
     uint8_t n = UART_getString(msg);
     if(equals(msg, (uint8_t*)"STOP")){
-      UART_putString((uint8_t*)"FINE\n");
       break;
     }
     else if(n != 3 && (*msg != 'C' || *msg != 'D')){
@@ -36,5 +37,6 @@ int main(void) {
       }
     }
   }
+  UART_putString((uint8_t*)"FINE\n");
   return 0;
 }
