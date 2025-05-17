@@ -3,7 +3,7 @@
 #include <util/delay.h>
 
 volatile uint8_t password[5] = {'1','2','3','4','5'};
-uint8_t msg[1900];
+uint8_t msg[256];
 
 int main(void) {
   UART_init();

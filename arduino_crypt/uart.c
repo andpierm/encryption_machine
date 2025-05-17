@@ -9,9 +9,12 @@ uint8_t equals(uint8_t* a, uint8_t* b){
   return 1;
 }
 
-volatile uint8_t data[100] = {0};
+volatile uint8_t data[256] = {0};
 volatile uint8_t index_rx_isr = 0;
 volatile uint8_t index_rx_read = 0;
+
+volatile uint8_t index_tx_isr = 0;
+volatile uint8_t index_tx_put = 0;
 
 void UART_init(void) {
   // Set baud rate
@@ -23,11 +26,22 @@ void UART_init(void) {
   sei();
 }
 
+ISR(USART_UDRE_vect){
+  if(index_tx_isr != index_tx_put){
+    UDR0 = data[index_tx_isr];
+    index_tx_isr = (index_tx_isr + 1) % sizeof(data);
+  }
+  else UCSR0B &= ~(1<<UDRIE0); // se non c'è nulla da scrivere disabilita interrupt
+}
+
 void UART_putChar(uint8_t c){
   // wait for transmission completed, looping on status bit
-  while ( !(UCSR0A & (1<<UDRE0)) );
+  //while ( !(UCSR0A & (1<<UDRE0)) );
   // Start transmission
-  UDR0 = c;
+  //UDR0 = c;
+  data[index_tx_put] = c;
+  index_tx_put = (index_tx_put + 1) % sizeof(data);
+  UCSR0B |= (1<<UDRIE0); // abilita interrupt per buffer pronto ad essere trasmesso
 }
 
 ISR(USART_RX_vect){
