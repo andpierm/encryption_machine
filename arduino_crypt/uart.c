@@ -35,10 +35,6 @@ ISR(USART_UDRE_vect){
 }
 
 void UART_putChar(uint8_t c){
-  // wait for transmission completed, looping on status bit
-  //while ( !(UCSR0A & (1<<UDRE0)) );
-  // Start transmission
-  //UDR0 = c;
   data[index_tx_put] = c;
   index_tx_put = (index_tx_put + 1) % sizeof(data);
   UCSR0B |= (1<<UDRIE0); // abilita interrupt per buffer pronto ad essere trasmesso

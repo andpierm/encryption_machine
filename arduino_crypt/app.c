@@ -36,7 +36,9 @@ int main(void) {
 	UART_putString(msg);
       }
     }
+    _delay_ms(50); // per permettere alla seriale di scrivere in tempo
   }
   UART_putString((uint8_t*)"FINE\n");
+  _delay_ms(50);
   return 0;
 }
