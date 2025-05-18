@@ -1,5 +1,12 @@
 #include "uart.h"
 
+volatile uint8_t data[256] = {0};
+volatile uint8_t index_rx_isr = 0;
+volatile uint8_t index_rx_read = 0;
+
+volatile uint8_t index_tx_isr = 0;
+volatile uint8_t index_tx_put = 0;
+
 uint8_t equals(uint8_t* a, uint8_t* b){
   while(*a != '\n'){
     if(*a != *b) return 0;
@@ -8,13 +15,6 @@ uint8_t equals(uint8_t* a, uint8_t* b){
   }
   return 1;
 }
-
-volatile uint8_t data[256] = {0};
-volatile uint8_t index_rx_isr = 0;
-volatile uint8_t index_rx_read = 0;
-
-volatile uint8_t index_tx_isr = 0;
-volatile uint8_t index_tx_put = 0;
 
 void UART_init(void) {
   // Set baud rate
