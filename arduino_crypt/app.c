@@ -9,6 +9,7 @@ int main(void) {
   UART_init();
   uint8_t cnt = 0;
   while(cnt < 3){
+    _delay_ms(10);
     UART_getString(msg);
     if(equals(msg, (uint8_t*)password)) break;
     cnt++;
@@ -26,12 +27,24 @@ int main(void) {
     }
     else{
       if(*msg == 'C'){
-	UART_getString(msg);
+	while(UART_getString(msg) == 196){ // 196 e non 255 per non sovrascrivere dati non ancora letti
+	  _delay_ms(50);
+	  crypt(msg);
+	  UART_putString(msg);
+	  _delay_ms(50);
+	}
+	_delay_ms(50);
 	crypt(msg);
 	UART_putString(msg);
       }
       else{
-        UART_getString(msg);
+        while(UART_getString(msg) == 196){
+	  _delay_ms(50);
+	  decrypt(msg);
+	  UART_putString(msg);
+	  _delay_ms(50);
+	}
+	_delay_ms(50);
 	decrypt(msg);
 	UART_putString(msg);
       }

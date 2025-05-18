@@ -1,9 +1,10 @@
 #include "uart.h"
 
-volatile uint8_t data[256] = {0};
+volatile uint8_t rx_data[256] = {0};
 volatile uint8_t index_rx_isr = 0;
 volatile uint8_t index_rx_read = 0;
 
+volatile uint8_t tx_data[256] = {0};
 volatile uint8_t index_tx_isr = 0;
 volatile uint8_t index_tx_put = 0;
 
@@ -28,35 +29,35 @@ void UART_init(void) {
 
 ISR(USART_UDRE_vect){
   if(index_tx_isr != index_tx_put){
-    UDR0 = data[index_tx_isr];
-    index_tx_isr = (index_tx_isr + 1) % sizeof(data);
+    UDR0 = tx_data[index_tx_isr];
+    index_tx_isr = (index_tx_isr + 1) % sizeof(tx_data);
   }
   else UCSR0B &= ~(1<<UDRIE0); // se non c'è nulla da scrivere disabilita interrupt
 }
 
 void UART_putChar(uint8_t c){
-  data[index_tx_put] = c;
-  index_tx_put = (index_tx_put + 1) % sizeof(data);
+  tx_data[index_tx_put] = c;
+  index_tx_put = (index_tx_put + 1) % sizeof(tx_data);
   UCSR0B |= (1<<UDRIE0); // abilita interrupt per buffer pronto ad essere trasmesso
 }
 
 ISR(USART_RX_vect){
-  data[index_rx_isr] = UDR0;
-  index_rx_isr = (index_rx_isr + 1) % sizeof(data);
+  rx_data[index_rx_isr] = UDR0;
+  index_rx_isr = (index_rx_isr + 1) % sizeof(rx_data);
 }
 
 uint8_t UART_getChar(void){
   if(index_rx_read == index_rx_isr) return 0;
   
-  uint8_t c = data[index_rx_read];
-  index_rx_read = (index_rx_read + 1) % sizeof(data);
+  uint8_t c = rx_data[index_rx_read];
+  index_rx_read = (index_rx_read + 1) % sizeof(rx_data);
   
   return c;
 }
 
 uint8_t UART_getString(uint8_t* buf){
   uint8_t* b0=buf;
-  while(1){
+  while(buf-b0 < 196){
     while(index_rx_isr == index_rx_read) sleep_cpu();
     
     uint8_t c=UART_getChar();
@@ -68,11 +69,10 @@ uint8_t UART_getString(uint8_t* buf){
     if(c=='\n'||c=='\r'){
       *buf=0;
       ++buf;
-      c = buf-b0;
-      buf = b0;
-      return c;
+      return buf-b0;
     }
   }
+  return buf-b0;
 }
 
 void UART_putString(uint8_t* buf){
