@@ -3,71 +3,55 @@
 #include <util/delay.h>
 
 volatile uint8_t password[5] = {'1','2','3','4','5'};
-volatile uint8_t index_rx = 0;
-volatile uint8_t index_tx = 0;
-uint8_t msg_rx[256]; 
-uint8_t msg_tx[256];
 
 int main(void) {
   UART_init();
   uint8_t cnt = 0;
   uint8_t n = 0;
-  while (1) {
-    uint8_t buf[200];
-    uint8_t n = UART_getString(buf);
-    UART_putString(buf);
-  }
 
-  /*while(cnt < 3){
-    n = UART_getString(msg_rx+index_rx);
-    UART_putString(msg_rx+index_rx);
-    if(equals(msg_rx+index_rx, (uint8_t*)password)) break;
-    index_rx = (index_rx+n) % sizeof(msg_rx);
+  while(cnt < 3){
+    uint8_t buf[255];
+    n = UART_getString(buf);
+    if(equals(buf, (uint8_t*)password)) break;
     cnt++;
   }
   if(cnt == 3) return 1;
   UART_putString((uint8_t*)"OK\n");
   _delay_ms(10);
   while(1){
-    n = UART_getString(msg_rx+index_rx);
-    if(equals(msg_rx+index_rx, (uint8_t*)"STOP")){
+    uint8_t buf[255];
+    n = UART_getString(buf);
+    if(equals(buf, (uint8_t*)"STOP")){
       break;
     }
-    else if(n != 3 && (*(msg_rx+index_rx) != 'C' && *(msg_rx+index_rx) != 'D')){
+    else if(n != 2 && (buf[0] != 'C' && buf[0] != 'D')){
       UART_putString((uint8_t*)"NOT A VALID OPTION\n");
     }
     else{
-      if(*(msg_rx+index_rx) == 'C'){
-	while((n = UART_getString(msg_rx + index_rx)) == 196){ // 196 e non 255 per non sovrascrivere dati non ancora letti
-	  //crypt(msg_rx + index_rx, msg_tx + index_tx);
-	  UART_putString(msg_rx + index_rx);
-	  index_rx = (index_rx+n) % sizeof(msg_rx);
-	  index_tx = (index_tx+n) % sizeof(msg_tx);
+      if(buf[0] == 'C' && n == 2){
+	while((n = UART_getString(buf)) == 255){
+	  crypt(buf, buf);
+	  UART_putString(buf);
 	  _delay_ms(50);
 	}
-        //crypt(msg_rx + index_rx, msg_tx + index_tx);
-        UART_putString(msg_rx + index_rx);
-	index_rx = (index_rx+n) % sizeof(msg_rx);
-	index_tx = (index_tx+n) % sizeof(msg_tx);
+        crypt(buf, buf);
+        UART_putString(buf);
         _delay_ms(50);
       }
-      else{
-        while((n = UART_getString(msg_rx + index_rx)) == 196){
-	  decrypt(msg_rx + index_rx, msg_tx + index_tx);
-	  UART_putString(msg_tx + index_tx);
-	  index_rx = (index_rx+n) % sizeof(msg_rx);
-	  index_tx = (index_tx+n) % sizeof(msg_tx);
+      else if(buf[0] == 'D' && n == 2){
+        while((n = UART_getString(buf)) == 255){
+	  decrypt(buf, buf);
+	  UART_putString(buf);
 	  _delay_ms(50);
 	}
-	UART_putString(msg_tx + index_tx);
-        index_rx = (index_rx+n) % sizeof(msg_rx);
-	index_tx = (index_tx+n) % sizeof(msg_tx);
+	UART_putString(buf);
 	_delay_ms(50);
       }
     }
     _delay_ms(50); // per permettere alla seriale di scrivere in tempo
-    }*/
+  }
   UART_putString((uint8_t*)"FINE\n");
   _delay_ms(50);
+  cli();
   return 0;
 }
