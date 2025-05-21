@@ -12,8 +12,15 @@ int main(void) {
   UART_init();
   uint8_t cnt = 0;
   uint8_t n = 0;
-  while(cnt < 3){
+  while (1) {
+    uint8_t buf[200];
+    uint8_t n = UART_getString(buf);
+    UART_putString(buf);
+  }
+
+  /*while(cnt < 3){
     n = UART_getString(msg_rx+index_rx);
+    UART_putString(msg_rx+index_rx);
     if(equals(msg_rx+index_rx, (uint8_t*)password)) break;
     index_rx = (index_rx+n) % sizeof(msg_rx);
     cnt++;
@@ -30,37 +37,36 @@ int main(void) {
       UART_putString((uint8_t*)"NOT A VALID OPTION\n");
     }
     else{
-      index_rx = (index_rx+n) % sizeof(msg_rx);
       if(*(msg_rx+index_rx) == 'C'){
 	while((n = UART_getString(msg_rx + index_rx)) == 196){ // 196 e non 255 per non sovrascrivere dati non ancora letti
-	  crypt(msg_rx + index_rx, msg_tx + index_tx);
+	  //crypt(msg_rx + index_rx, msg_tx + index_tx);
+	  UART_putString(msg_rx + index_rx);
 	  index_rx = (index_rx+n) % sizeof(msg_rx);
-	  //UART_putString(msg_tx + index_tx);
 	  index_tx = (index_tx+n) % sizeof(msg_tx);
 	  _delay_ms(50);
 	}
-        crypt(msg_rx + index_rx, msg_tx + index_tx);
+        //crypt(msg_rx + index_rx, msg_tx + index_tx);
+        UART_putString(msg_rx + index_rx);
 	index_rx = (index_rx+n) % sizeof(msg_rx);
-        //UART_putString(msg_tx + index_tx);
 	index_tx = (index_tx+n) % sizeof(msg_tx);
         _delay_ms(50);
       }
       else{
         while((n = UART_getString(msg_rx + index_rx)) == 196){
 	  decrypt(msg_rx + index_rx, msg_tx + index_tx);
-	  index_rx = (index_rx+n) % sizeof(msg_rx);
 	  UART_putString(msg_tx + index_tx);
+	  index_rx = (index_rx+n) % sizeof(msg_rx);
 	  index_tx = (index_tx+n) % sizeof(msg_tx);
 	  _delay_ms(50);
 	}
-        index_rx = (index_rx+n) % sizeof(msg_rx);
 	UART_putString(msg_tx + index_tx);
+        index_rx = (index_rx+n) % sizeof(msg_rx);
 	index_tx = (index_tx+n) % sizeof(msg_tx);
 	_delay_ms(50);
       }
     }
     _delay_ms(50); // per permettere alla seriale di scrivere in tempo
-  }
+    }*/
   UART_putString((uint8_t*)"FINE\n");
   _delay_ms(50);
   return 0;

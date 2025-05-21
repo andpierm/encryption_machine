@@ -42,16 +42,23 @@ void UART_putChar(uint8_t c){
 }
 
 ISR(USART_RX_vect){
-  rx_data[index_rx_isr] = UDR0;
-  index_rx_isr = (index_rx_isr + 1) % sizeof(rx_data);
+  uint8_t next = (index_rx_isr + 1) % sizeof(rx_data);
+  if(next != index_rx_read){ // se c'è spazio
+    rx_data[index_rx_isr] = UDR0;
+    index_rx_isr = next;
+  }
 }
 
 uint8_t UART_getChar(void){
-  if(index_rx_read == index_rx_isr) return 0;
-  
+  cli(); // l'isr potrebbe essere eseguita quando faccio getchar
+  if(index_rx_read == index_rx_isr){
+    sei();
+    return 0;
+  }
+
   uint8_t c = rx_data[index_rx_read];
   index_rx_read = (index_rx_read + 1) % sizeof(rx_data);
-  
+  sei();
   return c;
 }
 
@@ -65,12 +72,12 @@ uint8_t UART_getString(uint8_t* buf){
     ++buf;
     
     if(c=='\n'||c=='\r'){
-      ++buf;
+      //++buf;
       *buf = 0;
       return buf-b0;
     }
   }
-  buf++;
+  //buf++;
   *buf = 0;
   return buf-b0;
 }
