@@ -63,15 +63,15 @@ uint8_t UART_getString(uint8_t* buf){
     uint8_t c=UART_getChar();
     *buf=c;
     ++buf;
-    if (c==0)
-      return buf-b0;
     
     if(c=='\n'||c=='\r'){
-      *buf=0;
       ++buf;
+      *buf = 0;
       return buf-b0;
     }
   }
+  buf++;
+  *buf = 0;
   return buf-b0;
 }
 
