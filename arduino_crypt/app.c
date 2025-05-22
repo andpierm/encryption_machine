@@ -3,14 +3,16 @@
 #include <util/delay.h>
 
 volatile uint8_t password[6] = {'1','2','3','4','5', '\n'};
-uint8_t buf[255] = {0};
+volatile uint8_t len = 0;
+volatile uint8_t ignore = 0;
+uint8_t buf[254] = {0};
 
 int main(void) {
   UART_init();
   uint8_t cnt = 0;
   uint8_t n = 0;
 
-  while(cnt < 3){
+  while(cnt < 3){ // N.B: se vengono inserite stringhe > 255 caratteri allora lo conta cnt = cnt + 2
     n = UART_getString(buf, 0);
     if(equals(buf, (uint8_t*)password)) break;
     cnt++;
@@ -28,31 +30,41 @@ int main(void) {
     }
     else{
       if(buf[0] == 'C' && n == 2){
-	while((n = UART_getString(buf, 1)) == 255){
+	len = 0;
+	while((n = UART_getString(buf, 1)) == 254){
 	  crypt(buf, n);
 	  UART_putString(buf);
 	  _delay_ms(50);
+	}
+	_delay_ms(50); // per aspettare se l'utente ha inserito più byte del necessario di essere accumulati
+	               // per farne poi la verifica
+	ignore = 0;
+	if(len > n) {
+	  UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!\n");
+	  _delay_ms(50);
+	  return 1;
 	}
         crypt(buf, n);
         UART_putString(buf);
         _delay_ms(50);
       }
       else if(buf[0] == 'D' && n == 2){
-        while((n = UART_getString(buf, 1)) == 255){
+	len = 0;
+        while((n = UART_getString(buf, 1)) == 254){
 	  decrypt(buf, n);
 	  UART_putString(buf);
 	  _delay_ms(50);
 	}
+	_delay_ms(50);
+	ignore = 0;
+	if(len > n) {
+	  UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!\n");
+	  _delay_ms(50);
+	  return 1;
+	}
 	decrypt(buf, n);
 	UART_putString(buf);
 	_delay_ms(50);
-      }
-      // else se scrivo n byte di lunghezza, e ne mando n+x, vado a finire qui
-      else{
-	UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!\n");
-	UART_putString((uint8_t*)"FINE\n");
-	_delay_ms(100);
-        return 1;
       }
     }
     _delay_ms(50); // per permettere alla seriale di scrivere in tempo

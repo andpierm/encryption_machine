@@ -2,10 +2,14 @@
 #include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
 #include <avr/sleep.h>
 
 #define BAUD 19200
 #define MYUBRR (F_CPU/16/BAUD-1)
+
+extern volatile uint8_t len;
+extern volatile uint8_t ignore;
 
 uint8_t equals(uint8_t* a, uint8_t* b);
 

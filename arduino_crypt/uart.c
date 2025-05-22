@@ -14,7 +14,7 @@ uint8_t equals(uint8_t* a, uint8_t* b){
     a++;
     b++;
   }
-  return 1; // *a e *b devono essere entrambi uguale ad '\n'
+  return 1;
 }
 
 void UART_init(void) {
@@ -43,7 +43,8 @@ void UART_putChar(uint8_t c){
 
 ISR(USART_RX_vect){
   uint8_t next = (index_rx_isr + 1) % sizeof(rx_data);
-  if(next != index_rx_read){ // se c'è spazio
+  if(ignore) len++;
+  if(next != index_rx_read){ // se c'è spazio e se non supera la lunghezza consentita
     rx_data[index_rx_isr] = UDR0;
     index_rx_isr = next;
   }
@@ -64,12 +65,13 @@ uint8_t UART_getChar(void){
 
 uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero){
   uint8_t* b0=buf;
-  uint8_t len = 255;
+  uint8_t len_internal = 254;
   if(ignore_zero){
     while(index_rx_isr == index_rx_read) sleep_cpu();
-    len = UART_getChar();
+    len_internal = UART_getChar();
   }
-  while(buf-b0 < len){
+  ignore = ignore_zero;
+  while(buf-b0 < len_internal){
     while(index_rx_isr == index_rx_read) sleep_cpu();
     
     uint8_t c=UART_getChar();
@@ -81,8 +83,7 @@ uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero){
     }
   }
   *buf = 0;
-  
-  return buf-b0;
+  return len_internal;
 }
 
 void UART_putString(uint8_t* buf){
