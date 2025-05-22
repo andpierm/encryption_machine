@@ -2,7 +2,8 @@
 #include "uart.h"
 #include <util/delay.h>
 
-volatile uint8_t password[5] = {'1','2','3','4','5'};
+volatile uint8_t password[6] = {'1','2','3','4','5', '\n'};
+uint8_t buf[255] = {0};
 
 int main(void) {
   UART_init();
@@ -10,7 +11,6 @@ int main(void) {
   uint8_t n = 0;
 
   while(cnt < 3){
-    uint8_t buf[255];
     n = UART_getString(buf, 0);
     if(equals(buf, (uint8_t*)password)) break;
     cnt++;
@@ -19,7 +19,6 @@ int main(void) {
   UART_putString((uint8_t*)"OK\n");
   _delay_ms(10);
   while(1){
-    uint8_t buf[255];
     n = UART_getString(buf, 0);
     if(equals(buf, (uint8_t*)"STOP")){
       break;
@@ -30,20 +29,21 @@ int main(void) {
     else{
       if(buf[0] == 'C' && n == 2){
 	while((n = UART_getString(buf, 1)) == 255){
-	  crypt(buf, buf);
+	  crypt(buf, n);
 	  UART_putString(buf);
 	  _delay_ms(50);
 	}
-        crypt(buf, buf);
+        crypt(buf, n);
         UART_putString(buf);
         _delay_ms(50);
       }
       else if(buf[0] == 'D' && n == 2){
         while((n = UART_getString(buf, 1)) == 255){
-	  decrypt(buf, buf);
+	  decrypt(buf, n);
 	  UART_putString(buf);
 	  _delay_ms(50);
 	}
+	decrypt(buf, n);
 	UART_putString(buf);
 	_delay_ms(50);
       }
@@ -51,7 +51,7 @@ int main(void) {
       else{
 	UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!\n");
 	UART_putString((uint8_t*)"FINE\n");
-	_delay_ms(50);
+	_delay_ms(100);
         return 1;
       }
     }

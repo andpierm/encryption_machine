@@ -9,12 +9,12 @@ volatile uint8_t index_tx_isr = 0;
 volatile uint8_t index_tx_put = 0;
 
 uint8_t equals(uint8_t* a, uint8_t* b){
-  while(*a != '\n'){
+  while(*b != '\n'){
     if(*a != *b) return 0;
     a++;
     b++;
   }
-  return 1;
+  return 1; // *a e *b devono essere entrambi uguale ad '\n'
 }
 
 void UART_init(void) {
