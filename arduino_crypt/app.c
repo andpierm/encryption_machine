@@ -47,6 +47,13 @@ int main(void) {
 	UART_putString(buf);
 	_delay_ms(50);
       }
+      // else se scrivo n byte di lunghezza, e ne mando n+x, vado a finire qui
+      else{
+	UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!\n");
+	UART_putString((uint8_t*)"FINE\n");
+	_delay_ms(50);
+        return 1;
+      }
     }
     _delay_ms(50); // per permettere alla seriale di scrivere in tempo
   }
