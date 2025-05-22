@@ -21,7 +21,7 @@ uint8_t UART_getChar(void);
 //! @brief high level function (exposed)
 //!        reads a string until the first newline or 0
 //!        returns the size read
-uint8_t UART_getString(uint8_t* buf);
+uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero);
 
 //! @brief high level function (exposed)
 //!        writes a string until the first newline or 0

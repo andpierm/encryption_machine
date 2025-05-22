@@ -62,21 +62,26 @@ uint8_t UART_getChar(void){
   return c;
 }
 
-uint8_t UART_getString(uint8_t* buf){
+uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero){
   uint8_t* b0=buf;
-  while(buf-b0 < 255){
+  uint8_t len = 255;
+  if(ignore_zero){
+    while(index_rx_isr == index_rx_read) sleep_cpu();
+    len = UART_getChar();
+  }
+  while(buf-b0 < len){
     while(index_rx_isr == index_rx_read) sleep_cpu();
     
     uint8_t c=UART_getChar();
     *buf=c;
     ++buf;
-    
-    if(c=='\n'||c=='\r'){
-      *buf = 0;
+    if(!ignore_zero && (c=='\n' || c== '\r')){
+      *buf=0;
       return buf-b0;
     }
   }
   *buf = 0;
+  
   return buf-b0;
 }
 

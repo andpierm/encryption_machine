@@ -11,7 +11,7 @@ int main(void) {
 
   while(cnt < 3){
     uint8_t buf[255];
-    n = UART_getString(buf);
+    n = UART_getString(buf, 0);
     if(equals(buf, (uint8_t*)password)) break;
     cnt++;
   }
@@ -20,7 +20,7 @@ int main(void) {
   _delay_ms(10);
   while(1){
     uint8_t buf[255];
-    n = UART_getString(buf);
+    n = UART_getString(buf, 0);
     if(equals(buf, (uint8_t*)"STOP")){
       break;
     }
@@ -29,7 +29,7 @@ int main(void) {
     }
     else{
       if(buf[0] == 'C' && n == 2){
-	while((n = UART_getString(buf)) == 255){
+	while((n = UART_getString(buf, 1)) == 255){
 	  crypt(buf, buf);
 	  UART_putString(buf);
 	  _delay_ms(50);
@@ -39,7 +39,7 @@ int main(void) {
         _delay_ms(50);
       }
       else if(buf[0] == 'D' && n == 2){
-        while((n = UART_getString(buf)) == 255){
+        while((n = UART_getString(buf, 1)) == 255){
 	  decrypt(buf, buf);
 	  UART_putString(buf);
 	  _delay_ms(50);
