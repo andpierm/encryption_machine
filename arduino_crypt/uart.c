@@ -1,15 +1,15 @@
 #include "uart.h"
 
-volatile uint8_t rx_data[256] = {0};
+volatile uint8_t rx_data[255] = {0};
 volatile uint8_t index_rx_isr = 0;
 volatile uint8_t index_rx_read = 0;
 
-volatile uint8_t tx_data[256] = {0};
+volatile uint8_t tx_data[255] = {0};
 volatile uint8_t index_tx_isr = 0;
 volatile uint8_t index_tx_put = 0;
 
 uint8_t equals(uint8_t* a, uint8_t* b){
-  while(*b != '\n'){
+  while(*b != '\0'){
     if(*a != *b) return 0;
     a++;
     b++;
@@ -65,7 +65,7 @@ uint8_t UART_getChar(void){
 
 uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero){
   uint8_t* b0=buf;
-  uint8_t len_internal = 254;
+  uint8_t len_internal = 255;
   if(ignore_zero){
     while(index_rx_isr == index_rx_read) sleep_cpu();
     len_internal = UART_getChar();
@@ -77,7 +77,7 @@ uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero){
     uint8_t c=UART_getChar();
     *buf=c;
     ++buf;
-    if(!ignore_zero && (c=='\n' || c== '\r')){
+    if(!ignore_zero && !c){
       *buf=0;
       return buf-b0;
     }
