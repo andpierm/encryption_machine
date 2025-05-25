@@ -15,7 +15,7 @@ int main(void) {
   while(cnt < 3){ // N.B: se vengono inserite stringhe > 255 caratteri allora lo conta cnt = cnt + 2
     n = UART_getString(buf, 0);
     if(equals(buf, (uint8_t*)password)) break;
-    //UART_putChar('N');
+    UART_putChar('N');
     cnt++;
   }
   if(cnt == 3) return 1;

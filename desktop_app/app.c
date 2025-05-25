@@ -22,8 +22,12 @@ uint8_t check_auth(int serial){
     ssize_t sent = write(serial, password, strlen(password)+1);
     if(sent < 0) assert("Errore scrittura seriale");
     sleep(1);
-    ssize_t n = read(serial, risposta, 2);
+    
+    ssize_t n = read(serial, risposta, MAX_LENGTH_MSG);
     if(n<0) assert("Errore nella lettura");
+    printf("Risposta: [%s]\n", risposta);
+    tcflush(serial, TCIFLUSH);
+
     if(risposta[0] == 'O' && risposta[1] == 'K') return 0;
     cnt++;
   }
@@ -32,9 +36,10 @@ uint8_t check_auth(int serial){
 
 int main() {
   int serial = open(SERIAL, O_RDWR);
-  if(serial) {
+  if(serial == -1) {
     assert("Errore nell'apertura della porta seriale");
   }
+  sleep(2); // per dare tempo ad arduino di caricare il suo programma
   
   // configuro baud rate
   struct termios options;
@@ -48,6 +53,8 @@ int main() {
   options.c_cflag &= ~CSTOPB;  // 1 bit di stop
   options.c_cflag &= ~CSIZE;   // NO configurazione della dimensione dei dati
   options.c_cflag |= CS8;      // 8 bit di dati
+  options.c_lflag &= ~(ICANON | ECHO);  // raw mode - legge subito i dati senza aspettare '\n' e disabilita l'eco: quindi non ricevo dati "sporchi" che mando prima
+
   if(tcsetattr(serial, TCSANOW, &options) == -1) assert("Errore nell'applicazione degli attributi per seriale"); // 0 per opzioni opzionali
 
   if(check_auth(serial)){
