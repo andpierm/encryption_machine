@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <termios.h> // per configurare la seriale
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define SERIAL "/dev/ttyACM0"
@@ -11,10 +12,11 @@
 #define MAX_ATTEMPTS 3
 #define MAX_LENGTH_MSG 254 // non 255, perché serve +1 byte per '\0' 
 
-uint8_t check_auth(int serial){
+uint8_t check_auth(int serial) {
   uint8_t cnt = 0;
   char password[MAX_LENGTH_MSG];
   char risposta[MAX_LENGTH_MSG];
+
   while(cnt < MAX_ATTEMPTS){
     printf("Inserisci password:\t");
     scanf("%254s", password); // 254s per evitare buffer overflow
@@ -25,7 +27,8 @@ uint8_t check_auth(int serial){
       close(serial);
       assert("Errore scrittura seriale");
     }
-    ssize_t n = read(serial, risposta, MAX_LENGTH_MSG); // non c'è bisogno della sleep in quanto read bloccante
+    usleep(500000);
+    ssize_t n = read(serial, risposta, MAX_LENGTH_MSG);
     if(n<0) {
       close(serial);
       assert("Errore nella lettura");
@@ -77,8 +80,86 @@ int main() {
     return 1;
   }
   printf("Sei stato correttamente autenticato!\n");
-  
-  
+
+  char msg[MAX_LENGTH_MSG];
+  printf("\t\t==========  OPZIONI  ==========");
+  printf("\n<C> -- encrypt");
+  printf("\n<D> -- decrypt");
+  printf("\nSTOP -- terminate\n");
+
+  while(1){
+
+    printf("\n\nFile <F> or message <M> or <STOP>:\t");
+    scanf("%4s", msg);
+
+    if(strcmp(msg, "STOP") == 0){
+      msg[strlen(msg)] = 0;
+      ssize_t n = write(serial, msg, strlen(msg)+1);
+      if(n<0){
+        close(serial);
+        assert("Error on write on serial");
+      }
+      break;
+    }
+
+    if(*msg == 'M'){
+      printf("\nInserisci l'opzione:\t");
+      scanf("%254s", msg);
+      msg[strlen(msg)] = 0;
+      ssize_t n = write(serial, msg, strlen(msg)+1);
+      if(n<0){
+        close(serial);
+        assert("Error on write on serial");
+      }
+
+      char *msg_to_crypt = malloc(4096);
+      if (!msg_to_crypt) {
+        close(serial);
+        assert("malloc failed");
+      }
+
+      if (msg[0] == 'C') {
+        printf("\nInserisci il messaggio:\t");
+        int c; while ((c = getchar()) != '\n' && c != EOF);
+        fgets(msg_to_crypt, 4096, stdin); // uso fgets perché scanf mi si ferma al carattere ' '
+        size_t len = strlen(msg_to_crypt);
+        if(len > 0 && msg_to_crypt[len - 1] == '\n') {
+          msg_to_crypt[len - 1] = '\0';
+          len--;
+        }
+
+        int i = 0;
+        while(len > 0){
+          int chunk = len > 254 ? 254 : len;
+          *msg = chunk;
+          strncpy(msg + 1, msg_to_crypt + i, chunk);
+          ssize_t n = write(serial, msg, chunk + 1);
+          if(n < 0){
+            close(serial);
+            assert("Error on write on serial - probably you have entered too many bytes on option select");
+          }
+          usleep(500000);
+          n = read(serial, msg, chunk);
+          for (int j = 0; j < chunk; j++) {
+            printf("%02x", (unsigned char)msg[j]);
+          }
+          len -= chunk;
+          i += chunk;
+        }
+
+      } else if (msg[0] == 'D') {
+        // ......
+      }
+
+      free(msg_to_crypt);
+    }
+
+    if(*msg == 'F'){
+      // ......
+    }
+    //else printf("\nNOT A VALID OPTION\n");
+  }
+
   close(serial);
   return 0;
 }

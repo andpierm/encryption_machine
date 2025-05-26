@@ -16,10 +16,12 @@ int main(void) {
     n = UART_getString(buf, 0);
     if(equals(buf, (uint8_t*)password)) break;
     UART_putChar('N');
+    UART_putChar(0);
     cnt++;
   }
   if(cnt == 3) return 1;
   UART_putString((uint8_t*)"OK", 2);
+  UART_putChar(0);
   _delay_ms(10);
   while(1){
     n = UART_getString(buf, 0);
@@ -30,7 +32,7 @@ int main(void) {
       UART_putString((uint8_t*)"NOT A VALID OPTION", 18);
     }
     else{
-      if(buf[0] == 'C' && n == 1){
+      if(buf[0] == 'C' && n == 2){
 	len = 0;
         n = UART_getString(buf, 1);
         _delay_ms(50); // per aspettare se l'utente ha inserito più byte del necessario di essere accumulati
@@ -45,7 +47,7 @@ int main(void) {
         UART_putString(buf, n);
         _delay_ms(50);
       }
-      else if(buf[0] == 'D' && n == 1){
+      else if(buf[0] == 'D' && n == 2){
 	len = 0;
         n = UART_getString(buf, 1);
 	_delay_ms(50);
