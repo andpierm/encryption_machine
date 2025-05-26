@@ -9,7 +9,7 @@
 #define SERIAL "/dev/ttyACM0"
 #define BAUD B19200
 #define MAX_ATTEMPTS 3
-#define MAX_LENGTH_MSG 255
+#define MAX_LENGTH_MSG 254 // non 255, perché serve +1 byte per '\0' 
 
 uint8_t check_auth(int serial){
   uint8_t cnt = 0;
@@ -17,7 +17,7 @@ uint8_t check_auth(int serial){
   char risposta[MAX_LENGTH_MSG];
   while(cnt < MAX_ATTEMPTS){
     printf("Inserisci password:\t");
-    scanf("%255s", password); // 255s per evitare buffer overflow
+    scanf("%254s", password); // 254s per evitare buffer overflow
     password[strlen(password)] = 0;
     password[MAX_LENGTH_MSG] = 0;
     ssize_t sent = write(serial, password, strlen(password)+1);
@@ -31,7 +31,6 @@ uint8_t check_auth(int serial){
       assert("Errore nella lettura");
     }
     printf("Risposta: [%s]\n", risposta);
-    // tcflush(serial, TCIFLUSH); NON ERA QUI L'ERRORE!!!
 
     if(risposta[0] == 'O' && risposta[1] == 'K') return 0;
     cnt++;
