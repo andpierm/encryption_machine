@@ -7,6 +7,7 @@
 
 #define BAUD 19200
 #define MYUBRR (F_CPU/16/BAUD-1)
+#define MAX_BUF_LENGTH 255
 
 extern volatile uint8_t len;
 extern volatile uint8_t ignore;
@@ -23,10 +24,10 @@ void UART_putChar(uint8_t c);
 uint8_t UART_getChar(void);
 
 //! @brief high level function (exposed)
-//!        reads a string until the first newline or 0
+//!        reads a string until the first 0 if !ignore_zero
 //!        returns the size read
 uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero);
 
 //! @brief high level function (exposed)
-//!        writes a string until the first newline or 0
-void UART_putString(uint8_t* buf);
+//!        writes a string until n
+void UART_putString(uint8_t* buf, uint8_t n);

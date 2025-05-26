@@ -17,14 +17,14 @@ uint8_t check_auth(int serial){
   char risposta[MAX_LENGTH_MSG];
   while(cnt < MAX_ATTEMPTS){
     printf("Inserisci password:\t");
-    scanf("%s", password);
+    scanf("%255s", password); // 255s per evitare buffer overflow
     password[strlen(password)] = 0;
+    password[MAX_LENGTH_MSG] = 0;
     ssize_t sent = write(serial, password, strlen(password)+1);
     if(sent < 0) {
       close(serial);
       assert("Errore scrittura seriale");
     }
-    
     ssize_t n = read(serial, risposta, MAX_LENGTH_MSG); // non c'è bisogno della sleep in quanto read bloccante
     if(n<0) {
       close(serial);
@@ -78,6 +78,7 @@ int main() {
     return 1;
   }
   printf("Sei stato correttamente autenticato!\n");
+  
   
   close(serial);
   return 0;

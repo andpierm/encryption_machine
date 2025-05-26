@@ -1,10 +1,10 @@
 #include "uart.h"
 
-volatile uint8_t rx_data[255] = {0};
+volatile uint8_t rx_data[MAX_BUF_LENGTH] = {0};
 volatile uint8_t index_rx_isr = 0;
 volatile uint8_t index_rx_read = 0;
 
-volatile uint8_t tx_data[255] = {0};
+volatile uint8_t tx_data[MAX_BUF_LENGTH] = {0};
 volatile uint8_t index_tx_isr = 0;
 volatile uint8_t index_tx_put = 0;
 
@@ -65,7 +65,7 @@ uint8_t UART_getChar(void){
 
 uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero){
   uint8_t* b0=buf;
-  uint8_t len_internal = 255;
+  uint8_t len_internal = MAX_BUF_LENGTH;
   if(ignore_zero){
     while(index_rx_isr == index_rx_read) sleep_cpu();
     len_internal = UART_getChar();
@@ -86,8 +86,10 @@ uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero){
   return len_internal;
 }
 
-void UART_putString(uint8_t* buf){
-  while(*buf){
+void UART_putString(uint8_t* buf, uint8_t n){
+  if(n > 255) return;
+  uint8_t *b0 = buf;
+  while(buf-b0 < n){
     UART_putChar(*buf);
     ++buf;
   }

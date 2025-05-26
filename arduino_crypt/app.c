@@ -5,7 +5,7 @@
 volatile uint8_t password[6] = {'1','2','3','4','5', '\0'};
 volatile uint8_t len = 0;
 volatile uint8_t ignore = 0;
-uint8_t buf[255] = {0};
+uint8_t buf[MAX_BUF_LENGTH] = {0};
 
 int main(void) {
   UART_init();
@@ -19,7 +19,7 @@ int main(void) {
     cnt++;
   }
   if(cnt == 3) return 1;
-  UART_putString((uint8_t*)"OK");
+  UART_putString((uint8_t*)"OK", 2);
   _delay_ms(10);
   while(1){
     n = UART_getString(buf, 0);
@@ -27,7 +27,7 @@ int main(void) {
       break;
     }
     else if(n != 1 && (buf[0] != 'C' && buf[0] != 'D')){
-      UART_putString((uint8_t*)"NOT A VALID OPTION");
+      UART_putString((uint8_t*)"NOT A VALID OPTION", 18);
     }
     else{
       if(buf[0] == 'C' && n == 1){
@@ -37,12 +37,12 @@ int main(void) {
 	               // per farne poi la verifica
 	ignore = 0;
 	if(len > n) {
-	  UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!");
+	  UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!", 48);
 	  _delay_ms(50);
 	  return 1;
 	}
         crypt(buf, n);
-        UART_putString(buf);
+        UART_putString(buf, n);
         _delay_ms(50);
       }
       else if(buf[0] == 'D' && n == 1){
@@ -51,12 +51,12 @@ int main(void) {
 	_delay_ms(50);
 	ignore = 0;
 	if(len > n) {
-	  UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!");
+	  UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!", 48);
 	  _delay_ms(50);
 	  return 1;
 	}
 	decrypt(buf, n);
-	UART_putString(buf);
+	UART_putString(buf, n);
 	_delay_ms(50);
       }
     }
