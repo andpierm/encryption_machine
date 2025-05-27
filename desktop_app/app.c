@@ -120,8 +120,7 @@ int main() {
 
       if (msg[0] == 'C') {
         printf("\nInserisci il messaggio:\t");
-        int c; while ((c = getchar()) != '\n' && c != EOF);
-        fgets(msg_to_crypt, 4096, stdin); // uso fgets perché scanf mi si ferma al carattere ' '
+	read(0, msg_to_crypt, 4096); // 0 = stdin
         size_t len = strlen(msg_to_crypt);
         if(len > 0 && msg_to_crypt[len - 1] == '\n') {
           msg_to_crypt[len - 1] = '\0';
