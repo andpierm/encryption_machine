@@ -34,7 +34,18 @@ int main(void) {
     else{
       if(buf[0] == 'C' && n == 2){
 	len = 0;
-        n = UART_getString(buf, 1);
+        while((n = UART_getString(buf, 1)) == MAX_BUF_LENGTH){
+	  _delay_ms(50);
+	  ignore = 0;
+	  if(len > n) {
+	    UART_putString((uint8_t*)"HAI INSERITO PIU BYTE DI QUELLI CHE AVEVI DETTO!", 48);
+	    _delay_ms(50);
+	    return 1;
+	  }
+	  crypt(buf, n);
+	  UART_putString(buf, n);
+	  _delay_ms(50);
+	}
         _delay_ms(50); // per aspettare se l'utente ha inserito più byte del necessario di essere accumulati
 	               // per farne poi la verifica
 	ignore = 0;

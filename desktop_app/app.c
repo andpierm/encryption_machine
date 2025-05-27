@@ -129,19 +129,27 @@ int main() {
 
         int i = 0;
         while(len > 0){
-          int chunk = len > 254 ? 254 : len;
+          int chunk = len > 254 ? 254: len;
           *msg = chunk;
-          strncpy(msg + 1, msg_to_crypt + i, chunk);
-          ssize_t n = write(serial, msg, chunk + 1);
+	  ssize_t n = write(serial, msg, 1);
+          if(n < 0){
+            close(serial);
+            assert("Error on write on serial - probably you have entered too many bytes on option select");
+          }
+	  usleep(50000);
+          //strncpy(msg, msg_to_crypt + i, chunk);
+          n = write(serial, msg_to_crypt+i, chunk);
           if(n < 0){
             close(serial);
             assert("Error on write on serial - probably you have entered too many bytes on option select");
           }
           usleep(500000);
+	  
           n = read(serial, msg, chunk);
           for (int j = 0; j < chunk; j++) {
             printf("%02x", (unsigned char)msg[j]);
           }
+	  usleep(50000);
           len -= chunk;
           i += chunk;
         }
