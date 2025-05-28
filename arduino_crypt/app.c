@@ -44,6 +44,7 @@ int main(void) {
 	  }
 	  crypt(buf, n);
 	  UART_putString(buf, n);
+	  UART_putChar('A'); // manda ack 'A'
 	  _delay_ms(50);
 	}
         _delay_ms(50); // per aspettare se l'utente ha inserito più byte del necessario di essere accumulati
@@ -56,6 +57,7 @@ int main(void) {
 	}
         crypt(buf, n);
         UART_putString(buf, n);
+	UART_putChar('A'); // manda ack 'A'
         _delay_ms(50);
       }
       else if(buf[0] == 'D' && n == 2){

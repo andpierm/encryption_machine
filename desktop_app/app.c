@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <termios.h> // per configurare la seriale
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -25,13 +24,15 @@ uint8_t check_auth(int serial) {
     ssize_t sent = write(serial, password, strlen(password)+1);
     if(sent < 0) {
       close(serial);
-      assert("Errore scrittura seriale");
+      perror("Errore scrittura seriale");
+      exit(EXIT_FAILURE);
     }
     usleep(500000);
     ssize_t n = read(serial, risposta, MAX_LENGTH_MSG);
     if(n<0) {
       close(serial);
-      assert("Errore nella lettura");
+      perror("Errore nella lettura");
+      exit(EXIT_FAILURE);
     }
     printf("Risposta: [%s]\n", risposta);
 
@@ -44,7 +45,8 @@ uint8_t check_auth(int serial) {
 int main() {
   int serial = open(SERIAL, O_RDWR);
   if(serial == -1) {
-    assert("Errore nell'apertura della porta seriale");
+    perror("Errore nell'apertura della porta seriale");
+    exit(EXIT_FAILURE);
   }
   sleep(2); // per dare tempo ad arduino di caricare il suo programma
   
@@ -52,16 +54,19 @@ int main() {
   struct termios options;
   if(tcgetattr(serial, &options) == -1){ // legge impostazioni del terminale seriale
     close(serial);
-    assert("Errore durante acquisizione impostazioni terminale");
+    perror("Errore durante acquisizione impostazioni terminale");
+    exit(EXIT_FAILURE);
   }
 
   if(cfsetispeed(&options, BAUD) == -1) {
     close(serial);
-    assert("Errore durante setting input baud rate");
+    perror("Errore durante setting input baud rate");
+    exit(EXIT_FAILURE);
   }
   if(cfsetospeed(&options, BAUD) == -1) {
     close(serial);
-    assert("Errore durante setting output baud rate");
+    perror("Errore durante setting output baud rate");
+    exit(EXIT_FAILURE);
   }
   options.c_cflag &= ~PARENB;  // Nessuna parità
   options.c_cflag &= ~CSTOPB;  // 1 bit di stop
@@ -71,7 +76,8 @@ int main() {
 
   if(tcsetattr(serial, TCSANOW, &options) == -1) {
     close(serial);
-    assert("Errore nell'applicazione degli attributi per seriale"); // 0 per opzioni opzionali
+    perror("Errore nell'applicazione degli attributi per seriale"); // 0 per opzioni opzionali
+    exit(EXIT_FAILURE);
   }
 
   if(check_auth(serial)){
@@ -97,7 +103,8 @@ int main() {
       ssize_t n = write(serial, msg, strlen(msg)+1);
       if(n<0){
         close(serial);
-        assert("Error on write on serial");
+        perror("Error on write on serial");
+        exit(EXIT_FAILURE);
       }
       break;
     }
@@ -109,17 +116,19 @@ int main() {
       ssize_t n = write(serial, msg, strlen(msg)+1);
       if(n<0){
         close(serial);
-        assert("Error on write on serial");
+        perror("Error on write on serial");
+        exit(EXIT_FAILURE);
       }
 
       char *msg_to_crypt = malloc(4096);
       if (!msg_to_crypt) {
         close(serial);
-        assert("malloc failed");
+        perror("malloc failed");
+        exit(EXIT_FAILURE);
       }
 
       if (msg[0] == 'C') {
-        printf("\nInserisci il messaggio:\t");
+        printf("\nInserisci il messaggio:\t"); fflush(stdout);
 	read(0, msg_to_crypt, 4096); // 0 = stdin
         size_t len = strlen(msg_to_crypt);
         if(len > 0 && msg_to_crypt[len - 1] == '\n') {
@@ -134,21 +143,27 @@ int main() {
 	  ssize_t n = write(serial, msg, 1);
           if(n < 0){
             close(serial);
-            assert("Error on write on serial - probably you have entered too many bytes on option select");
+            perror("Error on write on serial - probably you have entered too many bytes on option select");
+            exit(EXIT_FAILURE);
           }
-	  usleep(50000);
-          //strncpy(msg, msg_to_crypt + i, chunk);
+	  usleep(500000);
           n = write(serial, msg_to_crypt+i, chunk);
           if(n < 0){
             close(serial);
-            assert("Error on write on serial - probably you have entered too many bytes on option select");
+            perror("Error on write on serial - probably you have entered too many bytes on option select");
+            exit(EXIT_FAILURE);
           }
-          usleep(500000);
-	  
-          n = read(serial, msg, chunk);
-          for (int j = 0; j < chunk; j++) {
+          usleep(1000000);
+	  n = read(serial, msg, chunk);
+	  if(n<0 || n != chunk) {close(serial); perror("Error on reading"); return 1;}
+
+	  printf("RICEVUTI %ld bytes\tMANDATI %d bytes\t MANCANTI %ld bytes\n\n", n, chunk, len);
+	  for (int j = 0; j < chunk; j++) {
             printf("%02x", (unsigned char)msg[j]);
-          }
+	  }
+	  n = read(serial, msg, 1);
+	  if(n<0) {close(serial); perror("Error on reading"); exit(EXIT_FAILURE);}
+	  if(n != 1 && *msg != 'A') {close(serial); perror("Error on ACK message"); exit(EXIT_FAILURE);}
 	  usleep(50000);
           len -= chunk;
           i += chunk;
@@ -164,7 +179,6 @@ int main() {
     if(*msg == 'F'){
       // ......
     }
-    //else printf("\nNOT A VALID OPTION\n");
   }
 
   close(serial);
