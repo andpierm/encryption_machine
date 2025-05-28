@@ -130,7 +130,7 @@ int main() {
       if (msg[0] == 'C') {
         printf("\nInserisci il messaggio:\t"); fflush(stdout);
 	read(0, msg_to_crypt, 4096); // 0 = stdin
-        size_t len = strlen(msg_to_crypt);
+        ssize_t len = strlen(msg_to_crypt);
         if(len > 0 && msg_to_crypt[len - 1] == '\n') {
           msg_to_crypt[len - 1] = '\0';
           len--;
@@ -158,21 +158,28 @@ int main() {
 	  if(n<0 || n != chunk) {close(serial); perror("Error on reading"); exit(EXIT_FAILURE);}
 
 	  for (int j = 0; j < chunk; j++) {
-            printf("%02x", (unsigned char)msg[j]);
+            printf("%02x", (unsigned char)msg[j]); // non uso write perché mi stampa caratteri non stampabili
 	    fflush(stdout);
 	  }
 	  n = read(serial, msg, 1);
 	  if(n<0) {close(serial); perror("Error on reading"); exit(EXIT_FAILURE);}
 	  if(n != 1 && *msg != 'A') {close(serial); perror("Error on ACK message"); exit(EXIT_FAILURE);}
 	  usleep(50000);
-          len -= chunk;
+          len -= 255; // e non -= chunk perché altrimenti sarebbe sempre 0 e non posso simulare un byte finto!
           i += chunk;
         }
 	printf("\n");
 	
 	if(len == 0){ // caso in cui volessi inviare ESATTAMENTE 255 byte di lunghezza ==> arduino si aspetta che ne invii altri
-	  *msg = 'o';
-	  ssize_t n = write(serial, msg, 1); // ==> invio un byte "finto" 'o'
+	  *msg = 1;
+	  ssize_t n = write(serial, msg, 1);
+	  if(n < 0){
+            close(serial);
+            perror("Error on write on serial - finto byte non inviato");
+            exit(EXIT_FAILURE);
+          }
+	  usleep(50000);
+	  n = write(serial, msg, 1); // ==> invio un byte "finto" 'o'
 	  if(n < 0){
             close(serial);
             perror("Error on write on serial - finto byte non inviato");
