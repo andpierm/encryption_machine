@@ -138,7 +138,7 @@ int main() {
 
         int i = 0;
         while(len > 0){
-          int chunk = len > 254 ? 254: len;
+          int chunk = len > 255 ? 255 : len;
           *msg = chunk;
 	  ssize_t n = write(serial, msg, 1);
           if(n < 0){
@@ -153,11 +153,10 @@ int main() {
             perror("Error on write on serial - probably you have entered too many bytes on option select");
             exit(EXIT_FAILURE);
           }
-          usleep(1000000);
+          sleep(1);
 	  n = read(serial, msg, chunk);
-	  if(n<0 || n != chunk) {close(serial); perror("Error on reading"); return 1;}
+	  if(n<0 || n != chunk) {close(serial); perror("Error on reading"); exit(EXIT_FAILURE);}
 
-	  printf("RICEVUTI %ld bytes\tMANDATI %d bytes\t MANCANTI %ld bytes\n\n", n, chunk, len);
 	  for (int j = 0; j < chunk; j++) {
             printf("%02x", (unsigned char)msg[j]);
 	  }
@@ -168,6 +167,19 @@ int main() {
           len -= chunk;
           i += chunk;
         }
+	
+	if(len == 0){ // caso in cui volessi inviare ESATTAMENTE 255 byte di lunghezza ==> arduino si aspetta che ne invii altri
+	  *msg = 'o';
+	  ssize_t n = write(serial, msg, 1); // ==> invio un byte "finto" 'o'
+	  if(n < 0){
+            close(serial);
+            perror("Error on write on serial - finto byte non inviato");
+            exit(EXIT_FAILURE);
+          }
+          usleep(50000);
+	  n = read(serial, msg, 2); // contiene sia byte finto 'o' cryptato + ACK
+	  if(n<0 || n != 2) {close(serial); perror("Error on reading - finto byte non letto correttamente"); exit(EXIT_FAILURE);}
+	}
 
       } else if (msg[0] == 'D') {
         // ......

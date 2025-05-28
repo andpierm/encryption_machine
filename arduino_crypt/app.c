@@ -34,7 +34,7 @@ int main(void) {
     else{
       if(buf[0] == 'C' && n == 2){
 	len = 0;
-        while((n = UART_getString(buf, 1)) == MAX_BUF_LENGTH){
+        while((n = UART_getString(buf, 1)) == MAX_BUF_LENGTH && ((len = 0) == 0)){
 	  _delay_ms(50);
 	  ignore = 0;
 	  if(len > n) {
