@@ -159,6 +159,7 @@ int main() {
 
 	  for (int j = 0; j < chunk; j++) {
             printf("%02x", (unsigned char)msg[j]);
+	    fflush(stdout);
 	  }
 	  n = read(serial, msg, 1);
 	  if(n<0) {close(serial); perror("Error on reading"); exit(EXIT_FAILURE);}
@@ -167,6 +168,7 @@ int main() {
           len -= chunk;
           i += chunk;
         }
+	printf("\n");
 	
 	if(len == 0){ // caso in cui volessi inviare ESATTAMENTE 255 byte di lunghezza ==> arduino si aspetta che ne invii altri
 	  *msg = 'o';
