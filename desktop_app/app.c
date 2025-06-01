@@ -105,8 +105,8 @@ void write_crypt(int serial, int mode) {
     }
 
     n = read(serial, msg, 1); // aspetta ack pronto a scrivere
-    if(n<0) {close(serial); fprintf(stderr, "Error: ricevuti %ld byte, ma attesi %d\n", n, chunk); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
-    if(n != 1 && *msg != 'O') {close(serial);perror("Error while reading first ACK");fclose(outf);exit(EXIT_FAILURE);}
+    if(n<0) {close(serial); fprintf(stderr, "Error: ricevuti %ld byte, ma attesi %d\n", n, chunk); free(msg_to_crypt); exit(EXIT_FAILURE);}
+    if(n != 1 && *msg != 'O') {close(serial);perror("Error while reading first ACK");exit(EXIT_FAILURE);}
 
     n = write(serial, msg_to_crypt+i, chunk);
     if(n < 0){
@@ -198,8 +198,6 @@ void process_file(int serial, int mode) {
   }
   sleep(2);
   int len = (int)filesize;
-  if(len > 0 && msg_to_crypt[len-1] == '\n') msg_to_crypt[len--] = '\0';
-  len -= len / 255;
 
   char msg[MAX_LENGTH_MSG];
   int i = 0;
@@ -224,7 +222,8 @@ void process_file(int serial, int mode) {
     int chunk = len > MAX_LENGTH_MSG ? MAX_LENGTH_MSG : len;
     *msg = chunk;
 
-    ssize_t n = write(serial, msg, 1);
+    unsigned char len_byte = chunk;
+    ssize_t n = write(serial, &len_byte, 1);
     if (n < 0) {
       close(serial);
       perror("Error on write on serial - probably you have entered too many bytes on option select");
@@ -232,7 +231,7 @@ void process_file(int serial, int mode) {
       free(msg_to_crypt);
       exit(EXIT_FAILURE);
     }
-
+    usleep(50000);
     n = read(serial, msg, 1); // aspetta ack pronto a scrivere
     if(n<0) {close(serial); fprintf(stderr, "Error: ricevuti %ld byte, ma attesi %d\n", n, chunk); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
     if(n != 1 && *msg != 'O') {close(serial);perror("Error while reading first ACK");fclose(outf);exit(EXIT_FAILURE);}
@@ -246,45 +245,42 @@ void process_file(int serial, int mode) {
       free(msg_to_crypt);
       exit(EXIT_FAILURE);
     }
-    write(1, "\n\nMessaggio originale:\t\n", 23);
-    write(1, msg_to_crypt + i, chunk);
+    printf("\nMessaggio INVIATO"); fflush(stdout);
 
     sleep(1);
     
-    n = read(serial, msg, chunk);
-    write(1, "\n\nMessaggio criptato:\t\n", 22);
-    write(1, msg, chunk);
-    printf("\nNUMERO BYTE OTTENUTI:\t%ld", n);
-    if(n<0) {close(serial); perror("Error on reading"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
-    if(n != chunk) {
-      fprintf(stderr, "Error: ricevuti %ld byte, ma attesi %d\n", n, chunk);
-      close(serial);
-      fclose(outf);
-      free(msg_to_crypt);
-      exit(EXIT_FAILURE);
+    int total_read = 0;
+    while (total_read < chunk) { // al secondo ciclo di lettura si blocca perchè arriva errore di aver inviato più byte di quanti avevo detto ???
+        ssize_t n = read(serial, msg + total_read, chunk - total_read);
+        if (n < 0) {
+            perror("Errore durante la lettura dalla seriale");
+            close(serial);
+            fclose(outf);
+            free(msg_to_crypt);
+            exit(EXIT_FAILURE);
+        }
+        total_read += n;
     }
-    fwrite(msg, 1, chunk, outf);
 
-    /*if(mode == 1){
-      for (int j = 0; j < chunk; j++) {
-        printf("%02x", (unsigned char)msg[j]);
-        fflush(stdout);
-      }
-    } else {
-      for(int j = 0; j < chunk; j++){
-        printf("%c", msg[j]);
-        fflush(stdout);
-      }
-    }*/
+    // Dopo aver letto 'chunk' byte criptati
+    printf("\nMessaggio criptato:\n"); fflush(stdout);
+    write(1, msg, chunk);
+    printf("\nNUMERO BYTE OTTENUTI:\t%ld", total_read); fflush(stdout);
+
+    // Poi aspetti l'ACK 'A' come fai già
     printf("Aspetto ACK 'A'...\n");
     n = read(serial, msg, 1);
-    printf("\n\nACK:\t%c", msg[0]);
-    if(n<0) {close(serial); perror("Error on reading"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
-    if(n != 1 || *msg != 'A') {close(serial); perror("Error on ACK message"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
-    usleep(100000);
+    if (n < 0) {
+        perror("Error on reading ACK");
+    } else if (n == 0) {
+        fprintf(stderr, "Nessun byte ricevuto per ACK\n");
+    } else {
+        printf("Byte ACK ricevuto: '%c' (0x%02X)\n", msg[0], (unsigned char)msg[0]);
+        if (msg[0] != 'A') {
+            fprintf(stderr, "Errore: byte ACK ricevuto diverso da 'A'\n");
+        }
+    }
 
-    len -= chunk;
-    i += chunk;
   }
 
   if(original_len % MAX_LENGTH_MSG == 0 && original_len != 0){
@@ -348,6 +344,10 @@ int main() {
   options.c_cflag &= ~CSIZE;   // NO configurazione della dimensione dei dati
   options.c_cflag |= CS8;      // 8 bit di dati
   options.c_lflag &= ~(ICANON | ECHO);  // raw mode - legge subito i dati senza aspettare '\n' e disabilita l'eco: quindi non ricevo dati "sporchi" che mando prima
+
+  options.c_cc[VMIN] = 1;   // Legge almeno 1 byte prima di restituire
+  options.c_cc[VTIME] = 0;  // Timeout disabilitato
+
 
   if(tcsetattr(serial, TCSANOW, &options) == -1) {
     close(serial);
