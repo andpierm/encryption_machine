@@ -103,7 +103,11 @@ void write_crypt(int serial, int mode) {
       perror("Error on write on serial - probably you have entered too many bytes on option select"); // non accade mai in quanto con scanf faccio %4s
       exit(EXIT_FAILURE);
     }
-    usleep(500000);
+
+    n = read(serial, msg, 1); // aspetta ack pronto a scrivere
+    if(n<0) {close(serial); fprintf(stderr, "Error: ricevuti %ld byte, ma attesi %d\n", n, chunk); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
+    if(n != 1 && *msg != 'O') {close(serial);perror("Error while reading first ACK");fclose(outf);exit(EXIT_FAILURE);}
+
     n = write(serial, msg_to_crypt+i, chunk);
     if(n < 0){
       close(serial);
@@ -192,7 +196,7 @@ void process_file(int serial, int mode) {
     free(msg_to_crypt);
     return;
   }
-  
+  sleep(2);
   int len = (int)filesize;
   if(len > 0 && msg_to_crypt[len-1] == '\n') msg_to_crypt[len--] = '\0';
   len -= len / 255;
@@ -200,7 +204,7 @@ void process_file(int serial, int mode) {
   char msg[MAX_LENGTH_MSG];
   int i = 0;
   int original_len = len;
-  printf("\n\nMessaggio %s:\n\n", mode == 1 ? "criptato" : "decriptato"); fflush(stdout);
+  //printf("\n\nMessaggio %s:\n\n", mode == 1 ? "criptato" : "decriptato"); fflush(stdout);
 
   char outfilename[520];
   if (mode == 1) {
@@ -228,7 +232,11 @@ void process_file(int serial, int mode) {
       free(msg_to_crypt);
       exit(EXIT_FAILURE);
     }
-    usleep(500000);
+
+    n = read(serial, msg, 1); // aspetta ack pronto a scrivere
+    if(n<0) {close(serial); fprintf(stderr, "Error: ricevuti %ld byte, ma attesi %d\n", n, chunk); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
+    if(n != 1 && *msg != 'O') {close(serial);perror("Error while reading first ACK");fclose(outf);exit(EXIT_FAILURE);}
+    printf("%c", msg[0]);
 
     n = write(serial, msg_to_crypt + i, chunk);
     if (n < 0) {
@@ -238,15 +246,26 @@ void process_file(int serial, int mode) {
       free(msg_to_crypt);
       exit(EXIT_FAILURE);
     }
+    write(1, "\n\nMessaggio originale:\t\n", 23);
+    write(1, msg_to_crypt + i, chunk);
 
     sleep(1);
     
     n = read(serial, msg, chunk);
-    if(n<0 || n != chunk) {close(serial); perror("Error on reading"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
-    
+    write(1, "\n\nMessaggio criptato:\t\n", 22);
+    write(1, msg, chunk);
+    printf("\nNUMERO BYTE OTTENUTI:\t%ld", n);
+    if(n<0) {close(serial); perror("Error on reading"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
+    if(n != chunk) {
+      fprintf(stderr, "Error: ricevuti %ld byte, ma attesi %d\n", n, chunk);
+      close(serial);
+      fclose(outf);
+      free(msg_to_crypt);
+      exit(EXIT_FAILURE);
+    }
     fwrite(msg, 1, chunk, outf);
 
-    if(mode == 1){
+    /*if(mode == 1){
       for (int j = 0; j < chunk; j++) {
         printf("%02x", (unsigned char)msg[j]);
         fflush(stdout);
@@ -256,9 +275,10 @@ void process_file(int serial, int mode) {
         printf("%c", msg[j]);
         fflush(stdout);
       }
-    }
-
+    }*/
+    printf("Aspetto ACK 'A'...\n");
     n = read(serial, msg, 1);
+    printf("\n\nACK:\t%c", msg[0]);
     if(n<0) {close(serial); perror("Error on reading"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
     if(n != 1 || *msg != 'A') {close(serial); perror("Error on ACK message"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
     usleep(100000);
@@ -289,7 +309,6 @@ void process_file(int serial, int mode) {
     usleep(50000);
     n = read(serial, msg, 2);
     if(n<0 || n != 2) {close(serial); perror("Error on reading - finto byte non letto correttamente"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
-    fwrite(msg, 1, 1, outf); // salva anche il finto byte criptato
   }
 
   printf("\n\nFile salvato in: %s\n", outfilename);

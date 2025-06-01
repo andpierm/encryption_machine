@@ -69,6 +69,7 @@ uint8_t UART_getString(uint8_t* buf, uint8_t ignore_zero){
   if(ignore_zero){
     while(index_rx_isr == index_rx_read) sleep_cpu();
     len_internal = UART_getChar();
+    UART_putChar('O'); // ACK per ok manda i dati
   }
   ignore = ignore_zero;
   while(buf-b0 < len_internal){
