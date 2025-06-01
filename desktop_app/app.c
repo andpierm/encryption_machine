@@ -9,7 +9,7 @@
 #define SERIAL "/dev/ttyACM0"
 #define BAUD B19200
 #define MAX_ATTEMPTS 3
-#define MAX_LENGTH_MSG 254 // non 255, perché serve +1 byte per '\0' 
+#define MAX_LENGTH_MSG 255 // non 255, perché serve +1 byte per '\0' 
 
 uint8_t check_auth(int serial) {
   uint8_t cnt = 0;
@@ -20,7 +20,7 @@ uint8_t check_auth(int serial) {
     printf("Inserisci password:\t");
     scanf("%254s", password); // 254s per evitare buffer overflow
     password[strlen(password)] = 0;
-    password[MAX_LENGTH_MSG] = 0;
+    password[MAX_LENGTH_MSG-1] = 0;
     ssize_t sent = write(serial, password, strlen(password)+1);
     if(sent < 0) {
       close(serial);
@@ -52,15 +52,22 @@ void write_crypt(int serial, int mode) {
   }
 
   int len = 0;
-
   if (mode == 1) {
     printf("\nInserisci il messaggio:\t"); fflush(stdout);
-    read(0, msg_to_crypt, 4096); // 0 = stdin
+    ssize_t n = read(0, msg_to_crypt, 4096); // 0 = stdin
+    if(n < 0){
+      close(serial);
+      perror("Errore lettura da tastiera");
+      exit(EXIT_FAILURE);
+    }
+    msg_to_crypt[n] = '\0';
     len = strlen(msg_to_crypt);
     if(len > 0 && msg_to_crypt[len - 1] == '\n') {
       msg_to_crypt[len - 1] = '\0';
       len--;
     }
+    len -= len/255; // perché scanf cerca un '\0', ma se non ci sta, va avanti nel buffer
+    printf("\n\nMessaggio criptato:\n\n"); fflush(stdout);
   } else {
     printf("\nInserisci i byte esadecimali:\t"); fflush(stdout);
     char hex_input[8192] = {0};
@@ -70,26 +77,30 @@ void write_crypt(int serial, int mode) {
       perror("Errore lettura da tastiera");
       exit(EXIT_FAILURE);
     }
+    hex_input[r] = '\0';
     for (int i = 0; i < r - 1 && len < 4096; i += 2) {
       unsigned int byte;
       if (sscanf(&hex_input[i], "%2x", &byte) == 1) { // per leggere in byte direttamente senza convertire da stringa a esadecimale
-	msg_to_crypt[len++] = (char)byte;
+	      msg_to_crypt[len++] = (char)byte;
       }
     }
     if(len > 0 && msg_to_crypt[len - 1] == '\n') {
       msg_to_crypt[len - 1] = '\0';
       len--;
     }
+    len -= len/255;
+    printf("\n\nMessaggio decriptato:\n\n"); fflush(stdout);
   }
 
   int i = 0;
+  int original_len = len;
   while(len > 0){
-    int chunk = len > MAX_LENGTH_MSG+1 ? MAX_LENGTH_MSG+1 : len;
+    int chunk = len > MAX_LENGTH_MSG ? MAX_LENGTH_MSG : len;
     *msg = chunk;
     ssize_t n = write(serial, msg, 1);
     if(n < 0){
       close(serial);
-      perror("Error on write on serial - probably you have entered too many bytes on option select");
+      perror("Error on write on serial - probably you have entered too many bytes on option select"); // non accade mai in quanto con scanf faccio %4s
       exit(EXIT_FAILURE);
     }
     usleep(500000);
@@ -104,25 +115,25 @@ void write_crypt(int serial, int mode) {
     if(n<0 || n != chunk) {close(serial); perror("Error on reading"); exit(EXIT_FAILURE);}
     if(mode == 1){
       for (int j = 0; j < chunk; j++) {
-	printf("%02x", (unsigned char)msg[j]); // non uso write perché mi stampa caratteri non stampabili
-	fflush(stdout);
+        printf("%02x", (unsigned char)msg[j]); // non uso write perché mi stampa caratteri non stampabili
+        fflush(stdout);
       }
     }else{
       for(int j = 0; j < chunk; j++){
-	printf("%c", msg[j]);
-	fflush(stdout);
+        printf("%c", msg[j]);
+        fflush(stdout);
       }
     }
 
     n = read(serial, msg, 1);
     if(n<0) {close(serial); perror("Error on reading"); exit(EXIT_FAILURE);}
-    if(n != 1 && *msg != 'A') {close(serial); perror("Error on ACK message"); exit(EXIT_FAILURE);}
-    usleep(50000);
-    len -= 255; // e non -= chunk perché altrimenti sarebbe sempre 0 e non posso simulare un byte finto!
+    if(n != 1 || *msg != 'A') {close(serial); perror("Error on ACK message"); exit(EXIT_FAILURE);}
+    usleep(100000);
+    len -= chunk;
     i += chunk;
   }
 
-  if(len == 0){ // caso in cui volessi inviare ESATTAMENTE 255 byte di lunghezza ==> arduino si aspetta che ne invii altri
+  if(original_len % MAX_LENGTH_MSG == 0 && original_len != 0){ // caso in cui volessi inviare MULTIPLO 255 byte di lunghezza ==> arduino si aspetta che ne invii altri
     *msg = 1;
     ssize_t n = write(serial, msg, 1);
     if(n < 0){
@@ -146,6 +157,146 @@ void write_crypt(int serial, int mode) {
   free(msg_to_crypt);
 }
 
+void process_file(int serial, int mode) {
+  char filename[512];
+  printf("\nInserisci il percorso del file:\t");
+  scanf("%511s", filename);
+
+  FILE *f = fopen(filename, "rb");
+  if (!f) {
+    perror("Errore apertura file");
+    return;
+  }
+
+  fseek(f, 0, SEEK_END);
+  long filesize = ftell(f);
+  fseek(f, 0, SEEK_SET);
+
+  if (filesize <= 0) {
+    printf("File vuoto o errore nella lettura dimensione file\n");
+    fclose(f);
+    return;
+  }
+
+  char *msg_to_crypt = malloc(filesize);
+  if (!msg_to_crypt) {
+    perror("malloc fallita");
+    fclose(f);
+    return;
+  }
+
+  size_t read_bytes = fread(msg_to_crypt, 1, filesize, f);
+  fclose(f);
+  if (read_bytes != filesize) {
+    perror("Errore lettura file");
+    free(msg_to_crypt);
+    return;
+  }
+  
+  int len = (int)filesize;
+  if(len > 0 && msg_to_crypt[len-1] == '\n') msg_to_crypt[len--] = '\0';
+  len -= len / 255;
+
+  char msg[MAX_LENGTH_MSG];
+  int i = 0;
+  int original_len = len;
+  printf("\n\nMessaggio %s:\n\n", mode == 1 ? "criptato" : "decriptato"); fflush(stdout);
+
+  char outfilename[520];
+  if (mode == 1) {
+    snprintf(outfilename, sizeof(outfilename), "%s.crypt", filename);
+  } else {
+    snprintf(outfilename, sizeof(outfilename), "%s.decrypt", filename);
+  }
+
+  FILE *outf = fopen(outfilename, "wb");
+  if (!outf) {
+    perror("Errore apertura file output");
+    free(msg_to_crypt);
+    return;
+  }
+
+  while (len > 0) {
+    int chunk = len > MAX_LENGTH_MSG ? MAX_LENGTH_MSG : len;
+    *msg = chunk;
+
+    ssize_t n = write(serial, msg, 1);
+    if (n < 0) {
+      close(serial);
+      perror("Error on write on serial - probably you have entered too many bytes on option select");
+      fclose(outf);
+      free(msg_to_crypt);
+      exit(EXIT_FAILURE);
+    }
+    usleep(500000);
+
+    n = write(serial, msg_to_crypt + i, chunk);
+    if (n < 0) {
+      close(serial);
+      perror("Error on write on serial - probably you have entered too many bytes on option select");
+      fclose(outf);
+      free(msg_to_crypt);
+      exit(EXIT_FAILURE);
+    }
+
+    sleep(1);
+    
+    n = read(serial, msg, chunk);
+    if(n<0 || n != chunk) {close(serial); perror("Error on reading"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
+    
+    fwrite(msg, 1, chunk, outf);
+
+    if(mode == 1){
+      for (int j = 0; j < chunk; j++) {
+        printf("%02x", (unsigned char)msg[j]);
+        fflush(stdout);
+      }
+    } else {
+      for(int j = 0; j < chunk; j++){
+        printf("%c", msg[j]);
+        fflush(stdout);
+      }
+    }
+
+    n = read(serial, msg, 1);
+    if(n<0) {close(serial); perror("Error on reading"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
+    if(n != 1 || *msg != 'A') {close(serial); perror("Error on ACK message"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
+    usleep(100000);
+
+    len -= chunk;
+    i += chunk;
+  }
+
+  if(original_len % MAX_LENGTH_MSG == 0 && original_len != 0){
+    *msg = 1;
+    ssize_t n = write(serial, msg, 1);
+    if(n < 0){
+      close(serial);
+      perror("Error on write on serial - finto byte non inviato");
+      fclose(outf);
+      free(msg_to_crypt);
+      exit(EXIT_FAILURE);
+    }
+    usleep(50000);
+    n = write(serial, msg, 1);
+    if(n < 0){
+      close(serial);
+      perror("Error on write on serial - finto byte non inviato");
+      fclose(outf);
+      free(msg_to_crypt);
+      exit(EXIT_FAILURE);
+    }
+    usleep(50000);
+    n = read(serial, msg, 2);
+    if(n<0 || n != 2) {close(serial); perror("Error on reading - finto byte non letto correttamente"); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
+    fwrite(msg, 1, 1, outf); // salva anche il finto byte criptato
+  }
+
+  printf("\n\nFile salvato in: %s\n", outfilename);
+  fclose(outf);
+  free(msg_to_crypt);
+}
+
 
 int main() {
   int serial = open(SERIAL, O_RDWR);
@@ -153,7 +304,7 @@ int main() {
     perror("Errore nell'apertura della porta seriale");
     exit(EXIT_FAILURE);
   }
-  sleep(2); // per dare tempo ad arduino di caricare il suo programma
+  sleep(3); // per dare tempo ad arduino di caricare il suo programma
   
   // configuro baud rate
   struct termios options;
@@ -224,17 +375,32 @@ int main() {
         exit(EXIT_FAILURE);
       }
 
-      if (msg[0] == 'C') {
-	write_crypt(serial, 1);
-      } else if (msg[0] == 'D') {
+      if (msg[0] == 'C' && n == 2) {
+	      write_crypt(serial, 1);
+      } else if (msg[0] == 'D' && n == 2) {
         write_crypt(serial, 0);
       }
 
     }
 
     if(*msg == 'F'){
-      // ......
+      printf("\nInserisci l'opzione:\t");
+      scanf("%254s", msg);
+      msg[strlen(msg)] = 0;
+      ssize_t n = write(serial, msg, strlen(msg)+1);
+      if(n < 0){
+        close(serial);
+        perror("Error on write on serial");
+        exit(EXIT_FAILURE);
+      }
+
+      if (msg[0] == 'C' && n == 2) {
+        process_file(serial, 1);
+      } else if (msg[0] == 'D' && n == 2) {
+        process_file(serial, 0);
+      }
     }
+
   }
   usleep(500000); // per permettere alla seriale di inviare tutti i dati per tempo
 
