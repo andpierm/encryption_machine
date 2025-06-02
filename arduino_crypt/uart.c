@@ -23,7 +23,7 @@ void UART_init(void) {
   UBRR0L = (uint8_t)MYUBRR;
 
   UCSR0C = (1<<UCSZ01) | (1<<UCSZ00); // 8-bit data - Character Size
-  UCSR0B = (1<<RXEN0) | (1<<RXCIE0) | (1<<TXEN0); // Enable interrupt and even for complete transmission
+  UCSR0B = (1<<RXEN0) | (1<<RXCIE0) | (1<<TXEN0); // Enable interrupts for tx, rx and rx complete
   sei();
 }
 
