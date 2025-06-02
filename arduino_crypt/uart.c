@@ -9,7 +9,7 @@ volatile uint8_t index_tx_isr = 0;
 volatile uint8_t index_tx_put = 0;
 
 uint8_t equals(uint8_t* a, uint8_t* b){
-  while(*b != '\0'){
+  while(*a != '\0' || *b != '\0'){
     if(*a != *b) return 0;
     a++;
     b++;
