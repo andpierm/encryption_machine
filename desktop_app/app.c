@@ -222,14 +222,11 @@ void process_file(int serial, int mode) {
     return;
   }
 
-  printf("\nLEN FILE:\t%d\n", original_len); fflush(stdout);
-
   while (len > 0) {
     int chunk = len > MAX_LENGTH_MSG ? MAX_LENGTH_MSG : len;
     *msg = chunk;
 
     uint8_t len_byte = chunk;
-    printf("\nNUM BYTE DA INVIARE:\t%d", len_byte);
     ssize_t n = write(serial, &len_byte, 1);
     if (n < 0) {
       close(serial);
@@ -251,7 +248,6 @@ void process_file(int serial, int mode) {
       free(msg_to_crypt);
       exit(EXIT_FAILURE);
     }
-    printf("\nBYTE INVIATI: %d\n\n", n); fflush(stdout);
 
     sleep(1);
     
@@ -270,7 +266,6 @@ void process_file(int serial, int mode) {
             continue;
         }
         total_read += n;
-        printf("\nLetti %d byte su %d previsti", total_read, chunk); fflush(stdout);
     }
 
     size_t w = fwrite(msg, 1, chunk, outf);
@@ -289,13 +284,14 @@ void process_file(int serial, int mode) {
     } else if (n == 0) {
         fprintf(stderr, "Nessun byte ricevuto per ACK\n");
     } else {
-        printf("Byte ACK ricevuto: '%c' (0x%02X)\n", msg[0], (unsigned char)msg[0]);
-        if (msg[0] != 'A') {
+        if (n != 1 || msg[0] != 'A') {
             fprintf(stderr, "Errore: byte ACK ricevuto diverso da 'A'\n");
         }
     }
     i += chunk;
     len -= chunk;
+    printf("\nPercentuale completamento:\t%.2f%%", 100 * original_len / chunk);
+    fflush(stdout);
   }
 
   if(original_len % MAX_LENGTH_MSG == 0 && original_len != 0){
