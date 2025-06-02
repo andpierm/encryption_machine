@@ -177,7 +177,7 @@ void process_file(int serial, int mode) {
   fseek(f, 0, SEEK_SET);
 
   if (filesize <= 0) {
-    printf("File vuoto o errore nella lettura dimensione file\n");
+    printf("File vuoto o errore nella lettura dimensione file\n\n\t\t");
     fclose(f);
     return;
   }
@@ -277,7 +277,6 @@ void process_file(int serial, int mode) {
         exit(EXIT_FAILURE);
     }
 
-    // Poi aspetti l'ACK 'A' come fai già
     n = read(serial, msg, 1);
     if (n < 0) {
         perror("Error on reading ACK");
@@ -290,7 +289,7 @@ void process_file(int serial, int mode) {
     }
     i += chunk;
     len -= chunk;
-    printf("\nPercentuale completamento:\t%.2f%%", 100 * original_len / chunk);
+    printf("\rPercentuale completamento:\t%6.2f%%", 100.0 * (float)i / original_len);
     fflush(stdout);
   }
 
@@ -323,6 +322,19 @@ void process_file(int serial, int mode) {
   free(msg_to_crypt);
 }
 
+void serial_clean(int serial){
+  int flags = fcntl(serial, F_GETFL, 0);
+  fcntl(serial, F_SETFL, flags | O_NONBLOCK);
+
+  char buf[256];
+  ssize_t n;
+
+  do {
+      n = read(serial, buf, sizeof(buf));
+  } while (n > 0);
+
+  fcntl(serial, F_SETFL, flags);
+}
 
 int main() {
   int serial = open(SERIAL, O_RDWR);
@@ -359,6 +371,8 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
+  serial_clean(serial); // serve per pulire la seriale ad esempio se l'ultima volta è stato mandato SIGINT
+
   if(check_auth(serial)){
     printf("Non sei stato correttamente autenticato\nFINE\n");
     close(serial);
@@ -388,7 +402,7 @@ int main() {
     }
 
     if(*msg == 'M'){
-      printf("\nInserisci l'opzione:\t");
+      printf("\nInserisci l'opzione <C> o <D>:\t");
       scanf("%254s", msg);
       msg[strlen(msg)] = 0;
       ssize_t n = write(serial, msg, strlen(msg)+1);
@@ -407,7 +421,7 @@ int main() {
     }
 
     if(*msg == 'F'){
-      printf("\nInserisci l'opzione:\t");
+      printf("\nInserisci l'opzione <C> o <D>:\t");
       scanf("%254s", msg);
       msg[strlen(msg)] = 0;
       ssize_t n = write(serial, msg, strlen(msg)+1);
