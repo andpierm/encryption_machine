@@ -9,7 +9,8 @@ With this simple program, you can encrypt/decrypt:
 ⚙️ How It Works
 
     Serial buffer reset:
-    At startup, the desktop app flushes the Arduino’s serial buffer — just in case there’s leftover input (e.g., a stray Ctrl+C from a previous session).
+    At startup, the desktop app flushes the Arduino’s serial buffer — just in case
+    there’s leftover input (e.g., a stray Ctrl+C from a previous session).
 
     Authentication required:
     You'll be asked to enter the "insane password" that your Arduino has programmed on it.
@@ -25,4 +26,5 @@ With this simple program, you can encrypt/decrypt:
         Encrypt/Decrypt a file — the result will be saved in your current folder.
 
     Safe exit:
-    During the encryption/decryption phase, you can terminate the program safely at any time if needed, with STOP or Ctrl+C.
+    During the encryption/decryption phase, you can terminate the program safely at 
+    any time if needed, with STOP or Ctrl+C.
