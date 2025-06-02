@@ -9,7 +9,7 @@
 #define SERIAL "/dev/ttyACM0"
 #define BAUD B19200
 #define MAX_ATTEMPTS 3
-#define MAX_LENGTH_MSG 255 // non 255, perché serve +1 byte per '\0' 
+#define MAX_LENGTH_MSG 255
 
 uint8_t check_auth(int serial) {
   uint8_t cnt = 0;
@@ -66,7 +66,7 @@ void write_crypt(int serial, int mode) {
       msg_to_crypt[len - 1] = '\0';
       len--;
     }
-    len -= len/255; // perché scanf cerca un '\0', ma se non ci sta, va avanti nel buffer
+    len -= len/255; // credo perché scanf cerca un '\0', ma se non ci sta, va avanti nel buffer
     printf("\n\nMessaggio criptato:\n\n"); fflush(stdout);
   } else {
     printf("\nInserisci i byte esadecimali:\t"); fflush(stdout);
@@ -235,7 +235,6 @@ void process_file(int serial, int mode) {
       free(msg_to_crypt);
       exit(EXIT_FAILURE);
     }
-    usleep(50000);
     n = read(serial, msg, 1); // aspetta ack pronto a scrivere
     if(n<0) {close(serial); fprintf(stderr, "Error: ricevuti %ld byte, ma attesi %d\n", n, chunk); fclose(outf); free(msg_to_crypt); exit(EXIT_FAILURE);}
     if(n != 1 || *msg != 'O') {close(serial);perror("Error while reading first ACK");fclose(outf);exit(EXIT_FAILURE);}
@@ -303,7 +302,6 @@ void process_file(int serial, int mode) {
       free(msg_to_crypt);
       exit(EXIT_FAILURE);
     }
-    usleep(50000);
     n = write(serial, msg, 1);
     if(n < 0){
       close(serial);
@@ -342,7 +340,7 @@ int main() {
     perror("Errore nell'apertura della porta seriale");
     exit(EXIT_FAILURE);
   }
-  sleep(3); // per dare tempo ad arduino di caricare il suo programma
+  sleep(2); // per dare tempo ad arduino di caricare il suo programma
   
   // configuro baud rate
   struct termios options;
@@ -387,8 +385,8 @@ int main() {
   printf("\n\tSTOP -- terminate\n");
 
   while(1){
-    printf("\n\nFile <F> or message <M> or <STOP>:\t");
-    scanf("%4s", msg);
+    printf("\nFile <F> or message <M> or <STOP>:\t");
+    scanf("%255s", msg);
 
     if(strcmp(msg, "STOP") == 0){
       msg[strlen(msg)] = 0;
@@ -401,39 +399,51 @@ int main() {
       break;
     }
 
-    if(*msg == 'M'){
-      printf("\nInserisci l'opzione <C> o <D>:\t");
-      scanf("%254s", msg);
+    if(strlen(msg) == 1 && *msg == 'M'){
+      printf("\n\nInserisci l'opzione <C> or <D>:\t");
+      scanf("%255s", msg);
       msg[strlen(msg)] = 0;
-      ssize_t n = write(serial, msg, strlen(msg)+1);
-      if(n<0){
-        close(serial);
-        perror("Error on write on serial");
-        exit(EXIT_FAILURE);
-      }
 
-      if (msg[0] == 'C' && n == 2) {
+      if (msg[0] == 'C' && strlen(msg) == 1) {
+        ssize_t n = write(serial, msg, strlen(msg)+1);
+        if(n<0){
+          close(serial);
+          perror("Error on write on serial");
+          exit(EXIT_FAILURE);
+        }
 	      write_crypt(serial, 1);
-      } else if (msg[0] == 'D' && n == 2) {
+      } else if (msg[0] == 'D' && strlen(msg) == 1) {
+        ssize_t n = write(serial, msg, strlen(msg)+1);
+        if(n<0){
+          close(serial);
+          perror("Error on write on serial");
+          exit(EXIT_FAILURE);
+        }
         write_crypt(serial, 0);
       }
 
     }
 
-    if(*msg == 'F'){
-      printf("\nInserisci l'opzione <C> o <D>:\t");
-      scanf("%254s", msg);
+    if(strlen(msg) == 1 && *msg == 'F'){
+      printf("\n\nInserisci l'opzione <C> or <D>:\t");
+      scanf("%255s", msg);
       msg[strlen(msg)] = 0;
-      ssize_t n = write(serial, msg, strlen(msg)+1);
-      if(n < 0){
-        close(serial);
-        perror("Error on write on serial");
-        exit(EXIT_FAILURE);
-      }
 
-      if (msg[0] == 'C' && n == 2) {
+      if (msg[0] == 'C' && strlen(msg) == 1) {
+        ssize_t n = write(serial, msg, strlen(msg)+1);
+        if(n<0){
+          close(serial);
+          perror("Error on write on serial");
+          exit(EXIT_FAILURE);
+        }
         process_file(serial, 1);
-      } else if (msg[0] == 'D' && n == 2) {
+      } else if (msg[0] == 'D' && strlen(msg) == 1) {
+        ssize_t n = write(serial, msg, strlen(msg)+1);
+        if(n<0){
+          close(serial);
+          perror("Error on write on serial");
+          exit(EXIT_FAILURE);
+        }
         process_file(serial, 0);
       }
     }
